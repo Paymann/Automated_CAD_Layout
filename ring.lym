@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description/>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>true</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut/>
+ <show-in-menu>false</show-in-menu>
+ <group-name/>
+ <menu-path/>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text>import pya
+import math
+import numpy as np
+"""
+This sample PCell implements a library called "MyLib" with a single PCell that
+draws a circle. It demonstrates the basic implementation techniques for a PCell 
+and how to use the "guiding shape" feature to implement a handle for the circle
+radius.
+
+Last modified on Dec 2th 2021
+Payman Rasekh, NRC 2021
+
+NOTE: after changing the code, the macro needs to be rerun to install the new
+implementation. The macro is also set to "auto run" to install the PCell 
+when KLayout is run.
+"""
+
+class Ring(pya.PCellDeclarationHelper):
+  """
+  The PCell declaration for the circle
+  """
+
+  def __init__(self):
+
+    # Important: initialize the super class
+    super(Ring, self).__init__()
+
+    # declare the parameters
+    self.param("l", self.TypeLayer, "Layer", default = pya.LayerInfo(1, 0))
+    self.param("n", self.TypeInt, "Number of points", default = 64)   
+    self.param("pulley_width", self.TypeDouble, "Pulley Width", default = 1)
+    self.param("ring_width", self.TypeDouble, "Ring Width", default = 1)
+    self.param("r_ring", self.TypeDouble, "Ring Radius", default = 45)
+    self.param("gap", self.TypeDouble, "Gap", default = 0.3)
+    self.param("intt", self.TypeDouble, "Int", default = 40)
+    
+    
+    self.param("handle_ring", self.TypeShape, "", default = pya.DPoint(0, 0))
+    self.param("handle_pulley", self.TypeShape, "", default = pya.DPoint(0, 0))
+    
+     
+    # this hidden parameter is used to determine whether the radius has changed
+    # or the "s" handle has been moved
+    self.param("r_mem_pulley", self.TypeDouble, "PullyRadius", default = 0.0, hidden = True)
+    self.param("r_mem_pulley_in", self.TypeDouble, "PullyInRadius", default = 0.0, hidden = True)
+    self.param("r_mem_pulley_out", self.TypeDouble, "PullyOutRadius", default = 0.0, hidden = True)
+    self.param("r_mem_ring", self.TypeDouble, "RingRadius", default = 0.0, hidden = True)
+    self.param("l_mem_wg_in", self.TypeDouble, "AccessWgInLength", default = 0, hidden = True)
+    self.param("l_mem_wg_out", self.TypeDouble, "AccessWgOutLength", default = 0, hidden = True)
+
+    
+    #self.param("r_inner", self.TypeDouble, "Inner Radius", default = 44.5, hidden = True)
+    self.param("r_pulley", self.TypeDouble, "Pulley Radius", default =46.3, hidden = True)
+    self.param("l_wg_in", self.TypeDouble, "AccessWgInLength", default = 70000, hidden = True)
+    self.param("l_wg_out", self.TypeDouble, "AccessWgOutLength", default = 70000, hidden = True)
+
+
+   
+
+
+  def display_text_impl(self):
+    # Provide a descriptive text for the cell
+    return "Ring(L=" + str(self.l) + ",R=" + ('%.3f' % self.r_ring) + ")"
+  
+  def coerce_parameters_impl(self):
+  
+    # We employ coerce_parameters_impl to decide whether the handle or the 
+    # numeric parameter has changed (by comparing against the effective 
+    # radius ru) and set ru to the effective radius. We also update the 
+    # numerical value or the shape, depending on which on has not changed.
+    handle_ring_radius = None
+    if isinstance(self.handle_ring, pya.DPoint): 
+      # compute distance in micron
+      handle_ring_radius = self.handle_ring.distance(pya.DPoint(0, 0))
+    
+    
+    handle_pulley_radius = None
+    if isinstance(self.handle_pulley, pya.DPoint): 
+      # compute distance in micron
+      handle_pulley_radius = self.handle_pulley.distance(pya.DPoint(0, 0))
+      
+      
+      
+    
+    if abs(self.r_ring-self.r_mem_ring) and abs(self.r_pulley-self.r_mem_pulley) &lt; 1e-9:
+      self.r_mem_ring = handle_ring_radius
+      self.r_ring = handle_ring_radius
+
+      self.r_mem_pulley = handle_pulley_radius
+      self.r_pulley = handle_pulley_radius
+      
+      self.r_mem_pulley_in = handle_pulley_radius
+      self.r_mem_pulley_out = handle_pulley_radius
+      
+      self.l_mem_wg_in = handle_pulley_radius
+      self.l_mem_wg_out = handle_pulley_radius
+      
+      
+    else:
+      self.r_mem_pulley = self.r_ring +self.ring_width + self.gap + self.pulley_width/2
+      self.handle_pulley = pya.DPoint(-self.r_pulley, 0)
+      
+      self.r_mem_pulley_in = self.r_ring +self.ring_width + self.gap + self.pulley_width/2
+      self.handle_pulley_in = pya.DPoint(-self.r_pulley, 0)
+      
+      self.r_mem_pulley_out = self.r_ring +self.ring_width + self.gap + self.pulley_width/2
+      self.handle_pulley_out = pya.DPoint(-self.r_pulley, 0)
+
+
+      self.l_mem_wg_in = self.l_wg_in
+      self.handle_pulley_in = pya.DPoint(-self.r_pulley, 0)
+      
+      self.l_mem_wg_out = self.l_wg_out
+      self.handle_pulley_out = pya.DPoint(-self.r_pulley, 0)
+      
+      self.r_mem_ring = self.r_ring
+      self.handle_ring = pya.DPoint(-self.r_ring, 0)
+      
+  
+  
+      
+      
+      
+  
+    
+    # n must be larger or equal than 4
+    if self.n &lt;= 4:
+      self.n = 4
+  
+  def can_create_from_shape_impl(self):
+    # Implement the "Create PCell from shape" protocol: we can use any shape which 
+    # has a finite bounding box
+    return self.shape.is_box() or self.shape.is_polygon() or self.shape.is_path()
+  
+  def parameters_from_shape_impl(self):
+    # Implement the "Create PCell from shape" protocol: we set r and l from the shape's 
+    # bounding box width and layer
+    self.r = self.shape.bbox().width() * self.layout.dbu / 2
+    self.l = self.layout.get_info(self.layer)
+  
+  def transformation_from_shape_impl(self):
+    # Implement the "Create PCell from shape" protocol: we use the center of the shape's
+    # bounding box to determine the transformation
+    return pya.Trans(self.shape.bbox().center())
+  
+  def produce_impl(self):
+  
+    # This is the main part of the implementation: create the layout
+
+
+
+
+    # fetch the parameters for the pulley
+    ru_pulley_dbu = self.r_mem_pulley / self.layout.dbu
+    # compute the pulley path
+    pts_pulley = []
+    theta_pulley = self.intt/self.r_mem_pulley
+    da_pulley = theta_pulley / self.n
+    for i in range(int(-0.5*self.n), int(0.5*self.n)):
+      pts_pulley.append(pya.Point.new(pya.DPoint(ru_pulley_dbu * math.cos(math.pi/2 + i * da_pulley), ru_pulley_dbu * math.sin(math.pi/2 + i * da_pulley))))
+    
+    
+    
+    
+    # fetch the parameters for inner ring
+    ru_inner_dbu = self.r_mem_ring / self.layout.dbu
+    # compute the inner circle
+    pts_inner = []
+    da_inner = math.pi * 2 / self.n
+    for i in range(0, self.n):
+      pts_inner.append(pya.Point.new(pya.DPoint(ru_inner_dbu * math.cos(i * da_inner), ru_inner_dbu * math.sin(i * da_inner))))
+      
+      
+      # fetch the parameters for outer ring
+    ru_outer_dbu = (self.r_mem_ring+self.ring_width) / self.layout.dbu
+    # compute the outer circle
+    pts_outer = []
+    da_outer = math.pi * 2 / self.n
+    for i in range(0, self.n):
+      pts_outer.append(pya.Point.new(pya.DPoint(ru_outer_dbu * math.cos(i * da_outer), ru_outer_dbu * math.sin(i * da_outer))))
+    
+    
+    
+    
+    
+    # fetch the parameters for the input pulley
+    ru_pulley_in_dbu = self.r_mem_pulley_in / self.layout.dbu
+    # compute the pulley path
+    pts_pulley_in = []
+    theta_pulley_in = theta_pulley
+    da_pulley_in = theta_pulley_in / self.n
+    for i in range(-1, int(0.5*self.n+2)):
+      pts_pulley_in.append(pya.Point.new(pya.DPoint(-2*(ru_pulley_in_dbu)*math.sin(0.5*theta_pulley_in) + ru_pulley_in_dbu * math.cos(math.pi/1 + math.pi/2 + i * da_pulley_in), 2*(ru_pulley_in_dbu)*math.cos(0.5*theta_pulley_in) + ru_pulley_in_dbu * math.sin(math.pi/1 +math.pi/2 + i * da_pulley_in))))
+      
+      
+    # fetch the parameters for the outut pulley
+    ru_pulley_out_dbu = self.r_mem_pulley_out / self.layout.dbu
+    # compute the pulley path
+    pts_pulley_out = []
+    theta_pulley_out = theta_pulley
+    da_pulley_out = theta_pulley_out / self.n
+    for i in range(-int(0.5*self.n), 1):
+      pts_pulley_out.append(pya.Point.new(pya.DPoint(2*(ru_pulley_out_dbu)*math.sin(0.5*theta_pulley_out) + ru_pulley_out_dbu * math.cos(math.pi/1 + math.pi/2 + i * da_pulley_out), 2*(ru_pulley_out_dbu)*math.cos(0.5*theta_pulley_out) + ru_pulley_out_dbu * math.sin(math.pi/1 +math.pi/2 + i * da_pulley_out))))
+      
+      
+      
+      
+    # fetch the parameters for the input access waveguide
+    pts_wg_in = []
+    dl_wg_in = self.l_mem_wg_in / self.n
+    for i in range(0, int(self.n)):
+      pts_wg_in.append(pya.Point.new(pya.DPoint(-2* ru_pulley_out_dbu*math.sin(0.5*theta_pulley_out) - self.l_wg_in  + i*dl_wg_in,    -ru_pulley_out_dbu +  2*ru_pulley_out_dbu*math.cos(0.5*theta_pulley_out) )))
+      
+      
+      
+    # fetch the parameters for the outut access waveguide
+    pts_wg_out = []
+    dl_wg_out = self.l_mem_wg_out / self.n
+    for i in range(0, int(self.n)):
+      pts_wg_out.append(pya.Point.new(pya.DPoint(2* ru_pulley_out_dbu*math.sin(0.5*theta_pulley_out) +  i*dl_wg_out,  -ru_pulley_out_dbu +  2*ru_pulley_out_dbu*math.cos(0.5*theta_pulley_out))))
+      
+      
+    
+    # create the shapes
+    self.cell.shapes(self.l_layer).insert(pya.Path(pts_pulley, self.pulley_width/self.layout.dbu))
+    self.cell.shapes(self.l_layer).insert(pya.Path(pts_pulley_in, self.pulley_width/self.layout.dbu))
+    self.cell.shapes(self.l_layer).insert(pya.Path(pts_pulley_out, self.pulley_width/self.layout.dbu))
+    self.cell.shapes(self.l_layer).insert(pya.Path(pts_wg_in, self.pulley_width/self.layout.dbu))
+    self.cell.shapes(self.l_layer).insert(pya.Path(pts_wg_out, self.pulley_width/self.layout.dbu))
+    
+    
+    xx = pya.Text
+    xxx = xx.new("Wav = 1, Gap = {}, Width = {}, Rad = {}, Int = {}".format(round(self.gap,1), self.ring_width, self.r_ring, self.intt), -2* ru_pulley_out_dbu*math.sin(0.5*theta_pulley_out) - 2*self.l_wg_in  + i*dl_wg_in,   1000  -ru_pulley_out_dbu +  2*ru_pulley_out_dbu*math.cos(0.5*theta_pulley_out))
+    self.cell.shapes(self.l_layer).insert(xxx)
+   
+   
+
+   
+    in_ring = pya.Polygon(pts_inner)
+    out_ring = pya.Polygon(pts_outer)
+    cc = pya.Region.new(in_ring)
+    ccc = pya.Region.new(out_ring)
+    d = cc^ccc
+    self.cell.shapes(self.l_layer).insert(d)
+    
+    
+    
+    
+    
+class MyLib(pya.Library):
+  """
+  The library where we will put the PCell into 
+  """
+
+  def __init__(self):
+  
+    # Set the description
+    self.description = "My First Library"
+    
+    # Create the PCell declarations
+    self.layout().register_pcell("Ring", Ring())
+    # That would be the place to put in more PCells ...
+    
+    # Register us with the name "MyLib".
+    # If a library with that name already existed, it will be replaced then.
+    self.register("MyLib")
+
+
+# Instantiate and register the library
+MyLib()
+</text>
+</klayout-macro>
