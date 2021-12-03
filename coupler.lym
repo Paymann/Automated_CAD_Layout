@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description/>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>true</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut/>
+ <show-in-menu>false</show-in-menu>
+ <group-name/>
+ <menu-path/>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text>import pya
+import math
+
+"""
+This sample PCell implements a library called "MyLib" with a single PCell that
+draws a circle. It demonstrates the basic implementation techniques for a PCell 
+and how to use the "guiding shape" feature to implement a handle for the circle
+radius.
+
+Last modified on Dec 3rd 2021
+Payman Rasekh, NRC 2021
+
+NOTE: after changing the code, the macro needs to be rerun to install the new
+implementation. The macro is also set to "auto run" to install the PCell 
+when KLayout is run.
+"""
+
+class Coupler(pya.PCellDeclarationHelper):
+  """
+  The PCell declaration for the circle
+  """
+
+  def __init__(self):
+
+    # Important: initialize the super class
+    super(Coupler, self).__init__()
+
+    # declare the parameters
+    self.param("l", self.TypeLayer, "Layer", default = pya.LayerInfo(1, 0))
+    self.param("length", self.TypeDouble, "Length Waveguide", default = 10)
+    self.param("length_curve1", self.TypeDouble, "Length Curve", default = 40)
+    self.param("in_width", self.TypeDouble, "Input Width", default = 0.5)
+    self.param("gap", self.TypeDouble, "Gap", default =2000)
+    self.param("height_mag", self.TypeDouble, "Vertical magnification factor", default =1)
+    self.param("n", self.TypeInt, "Number of points", default = 64)     
+   
+    self.param("handle_coupler", self.TypeShape, "", default = pya.DPoint(0, 0))
+    
+
+    # this hidden parameter is used to determine whether the radius has changed
+    # or the "s" handle has been moved
+    self.param("length_mem", self.TypeDouble, "MemLength", default = 0.0, hidden = True)
+    self.param("in_width_mem", self.TypeDouble, "MemInWidth", default = 0.0, hidden = True)
+    self.param("length_mem_curve1", self.TypeDouble, "MemRadiusCurve1", default = 0.0, hidden = True)
+
+
+  def display_text_impl(self):
+    # Provide a descriptive text for the cell
+    return "Coupler(Layer=" + str(self.l) + ",Length=" + ('%.3f' % self.length) + ")"
+  
+  def coerce_parameters_impl(self):
+  
+    # We employ coerce_parameters_impl to decide whether the handle or the 
+    # numeric parameter has changed (by comparing against the effective 
+    # radius ru) and set ru to the effective radius. We also update the 
+    # numerical value or the shape, depending on which on has not changed.
+    handle_coupler_length = None
+    if isinstance(self.handle_coupler, pya.DPoint): 
+      # compute distance in micron
+      handle_coupler_length = self.handle_coupler.distance(pya.DPoint(0, 0))
+    if handle_coupler_length != None and abs(self.length-self.length_mem) &lt; 1e-6:
+      self.length_mem = handle_coupler_length
+      self.length = handle_coupler_length
+    else:
+      self.length_mem = self.length
+      self.handle_coupler = pya.DPoint(self.length, 0)
+      
+      
+      handle_coupler_in_width = None
+    if isinstance(self.handle_coupler, pya.DPoint): 
+      # compute distance in micron
+      handle_coupler_in_width = self.in_width
+    if handle_coupler_in_width != None and abs(self.in_width-self.in_width_mem) &lt; 1e-6:
+      self.in_width_mem = handle_coupler_in_width
+      self.in_width = handle_coupler_in_width
+    else:
+      self.in_width_mem = self.in_width
+      self.handle_coupler = pya.DPoint(self.length, 0)
+      
+      
+      handle_coupler_curve1 = None
+    if isinstance(self.handle_coupler, pya.DPoint): 
+      # compute distance in micron
+      handle_coupler_curve1 = self.length_curve1
+    if handle_coupler_curve1 != None and abs(self.length-self.length_mem) &lt; 1e-6:
+      self.length_curve1 = handle_coupler_curve1
+      self.length_mem_curve1 = handle_coupler_curve1
+    else:
+      self.length_mem_curve1 = self.length_curve1
+      self.handle_coupler = pya.DPoint(self.length, 0)
+      
+      
+      
+    
+ 
+    
+    # n must be larger or equal than 4
+    if self.n &lt;= 4:
+      self.n = 4
+  
+  def can_create_from_shape_impl(self):
+    # Implement the "Create PCell from shape" protocol: we can use any shape which 
+    # has a finite bounding box
+    return self.shape.is_box() or self.shape.is_polygon() or self.shape.is_path()
+  
+  def parameters_from_shape_impl(self):
+    # Implement the "Create PCell from shape" protocol: we set r and l from the shape's 
+    # bounding box width and layer
+    self.length = self.shape.bbox().width() * self.layout.dbu / 2
+    self.l = self.layout.get_info(self.layer)
+  
+  def transformation_from_shape_impl(self):
+    # Implement the "Create PCell from shape" protocol: we use the center of the shape's
+    # bounding box to determine the transformation
+    return pya.Trans(self.shape.bbox().center())
+  
+  def produce_impl(self):
+  
+    # This is the main part of the implementation: create the layout
+
+    # fetch the parameters for curve1
+    length_curve1_dbu = self.length_mem_curve1 / self.layout.dbu
+    
+    # compute the curve 1 path
+    pts_curve1 = []
+    da_curve1 = length_curve1_dbu / self.n
+    for i in range(-int(0.5*self.n), int(0.5*self.n)):
+      pts_curve1.append(pya.Point.new(    i*da_curve1, (1e4*self.height_mag)/(1+math.exp(-i*da_curve1*5e-4/(self.length_curve1/20))  )    + self.gap/2   ))
+      
+
+    
+    # compute the curve 1 path
+    pts_curve2 = []
+    da_curve1 = length_curve1_dbu / self.n
+    for i in range(-int(0.5*self.n), int(0.5*self.n)):
+      pts_curve2.append(pya.Point.new(    i*da_curve1, -(1e4*self.height_mag)/(1+math.exp(-i*da_curve1*5e-4/(self.length_curve1/20))  )    - self.gap/2   ))
+      
+    
+    
+  
+      
+    
+      
+    # create the shape
+    self.cell.shapes(self.l_layer).insert(pya.Path(pts_curve1, self.in_width_mem/ self.layout.dbu))
+    self.cell.shapes(self.l_layer).insert(pya.Path(pts_curve2, self.in_width_mem/ self.layout.dbu))
+
+
+class MyLib(pya.Library):
+  """
+  The library where we will put the PCell into 
+  """
+
+  def __init__(self):
+  
+    # Set the description
+    self.description = "My First Library"
+    
+    # Create the PCell declarations
+    self.layout().register_pcell("Coupler", Coupler())
+    # That would be the place to put in more PCells ...
+    
+    # Register us with the name "MyLib".
+    # If a library with that name already existed, it will be replaced then.
+    self.register("MyLib")
+
+
+# Instantiate and register the library
+MyLib()
+</text>
+</klayout-macro>
