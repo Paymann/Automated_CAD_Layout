@@ -220,7 +220,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     top_pts_pulley = []
     top_theta_pulley = self.top_intt/self.top_r_mem_pulley
     top_da_pulley = top_theta_pulley / self.n
-    for i in range(int(-0.5*self.n), int(0.5*self.n)):
+    for i in range(int(-0.5*self.n), int(0.5*self.n)+1):
       top_pts_pulley.append(pya.Point.new(pya.DPoint(top_ru_pulley_dbu * math.cos(math.pi/2 + i * top_da_pulley), top_ru_pulley_dbu * math.sin(math.pi/2 + i * top_da_pulley))))
     
     
@@ -231,7 +231,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     bottom_pts_pulley = []
     bottom_theta_pulley = self.bottom_intt/self.bottom_r_mem_pulley
     bottom_da_pulley = bottom_theta_pulley / self.n
-    for i in range(int(-0.5*self.n), int(0.5*self.n)):
+    for i in range(int(-0.5*self.n), int(0.5*self.n)+1):
       bottom_pts_pulley.append(pya.Point.new(pya.DPoint(bottom_ru_pulley_dbu * math.cos(3*math.pi/2 + i * bottom_da_pulley), bottom_ru_pulley_dbu * math.sin(3*math.pi/2 + i * bottom_da_pulley))))
       
       
@@ -265,7 +265,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     top_pts_pulley_in = []
     top_theta_pulley_in = top_theta_pulley
     top_da_pulley_in = top_theta_pulley_in / self.n
-    for i in range(-2, int(0.5*self.n)+2):
+    for i in range(0, int(0.5*self.n)+1):
       top_pts_pulley_in.append(pya.Point.new(pya.DPoint(-2*(top_ru_pulley_in_dbu)*math.sin(0.5*top_theta_pulley_in) + top_ru_pulley_in_dbu * math.cos(math.pi/1 + math.pi/2 + i * top_da_pulley_in), 2*(top_ru_pulley_in_dbu)*math.cos(0.5*top_theta_pulley_in) + top_ru_pulley_in_dbu * math.sin(math.pi/1 +math.pi/2 + i * top_da_pulley_in))))
       
       
@@ -287,7 +287,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     bottom_pts_pulley_in = []
     bottom_theta_pulley_in = bottom_theta_pulley
     bottom_da_pulley_in = bottom_theta_pulley_in / self.n
-    for i in range(-int(0.5*self.n), 2):
+    for i in range(-int(0.5*self.n), 1):
       bottom_pts_pulley_in.append(pya.Point.new(pya.DPoint(-2*(bottom_ru_pulley_in_dbu)*math.sin(0.5*bottom_theta_pulley_in) + bottom_ru_pulley_in_dbu * math.cos(math.pi/2 +  i * bottom_da_pulley_in), -2*(bottom_ru_pulley_in_dbu)*math.cos(0.5*bottom_theta_pulley_in) + bottom_ru_pulley_in_dbu * math.sin( math.pi/2 + i * bottom_da_pulley_in))))
       
       
@@ -297,7 +297,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     bottom_pts_pulley_out = []
     bottom_theta_pulley_out = bottom_theta_pulley
     bottom_da_pulley_out = bottom_theta_pulley_out / self.n
-    for i in range(-1, int(0.5*self.n)+2):
+    for i in range(0, int(0.5*self.n)+1):
       bottom_pts_pulley_out.append(pya.Point.new(pya.DPoint(2*(bottom_ru_pulley_out_dbu)*math.sin(0.5*bottom_theta_pulley_out) + bottom_ru_pulley_out_dbu * math.cos( math.pi/2 + i * bottom_da_pulley_out), -2*(bottom_ru_pulley_out_dbu)*math.cos(0.5*bottom_theta_pulley_out) + bottom_ru_pulley_out_dbu * math.sin(math.pi/2 + i * bottom_da_pulley_out))))
       
       
@@ -306,7 +306,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     # fetch the parameters for the top input access waveguide
     top_pts_wg_in = []
     top_dl_wg_in = self.top_l_mem_wg_in / self.n
-    for i in range(0, int(self.n)):
+    for i in range(0, int(self.n)+1):
       top_pts_wg_in.append(pya.Point.new(pya.DPoint(-2* top_ru_pulley_out_dbu*math.sin(0.5*top_theta_pulley_out) - self.top_l_wg_in  + i*top_dl_wg_in,    -top_ru_pulley_out_dbu +  2*top_ru_pulley_out_dbu*math.cos(0.5*top_theta_pulley_out) )))
       
       
@@ -314,7 +314,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     # fetch the parameters for the top outut access waveguide
     top_pts_wg_out = []
     top_dl_wg_out = self.top_l_mem_wg_out / self.n
-    for i in range(0, int(self.n)):
+    for i in range(0, int(self.n)+1):
       top_pts_wg_out.append(pya.Point.new(pya.DPoint(2* top_ru_pulley_out_dbu*math.sin(0.5*top_theta_pulley_out) +  i*top_dl_wg_out,  -top_ru_pulley_out_dbu +  2*top_ru_pulley_out_dbu*math.cos(0.5*top_theta_pulley_out))))
       
       
@@ -322,7 +322,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     # fetch the parameters for the bottom input access waveguide
     bottom_pts_wg_in = []
     bottom_dl_wg_in = self.bottom_l_mem_wg_in / self.n
-    for i in range(0, int(self.n)):
+    for i in range(0, int(self.n)+1):
       bottom_pts_wg_in.append(pya.Point.new(pya.DPoint(-2* bottom_ru_pulley_out_dbu*math.sin(0.5*bottom_theta_pulley_out) - self.bottom_l_wg_in  + i*bottom_dl_wg_in,    bottom_ru_pulley_out_dbu -  2*bottom_ru_pulley_out_dbu*math.cos(0.5*bottom_theta_pulley_out) )))
       
       
@@ -330,7 +330,7 @@ class Ring_double(pya.PCellDeclarationHelper):
     # fetch the parameters for the bottom outut access waveguide
     bottom_pts_wg_out = []
     bottom_dl_wg_out = self.bottom_l_mem_wg_out / self.n
-    for i in range(0, int(self.n)):
+    for i in range(0, int(self.n)+1):
       bottom_pts_wg_out.append(pya.Point.new(pya.DPoint(2* bottom_ru_pulley_out_dbu*math.sin(0.5*bottom_theta_pulley_out) +  i*bottom_dl_wg_out,  bottom_ru_pulley_out_dbu -  2*bottom_ru_pulley_out_dbu*math.cos(0.5*bottom_theta_pulley_out))))
       
       
